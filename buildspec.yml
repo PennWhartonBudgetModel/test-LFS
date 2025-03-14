@@ -1,0 +1,41 @@
+version: 0.2
+
+phases:
+  pre_build:
+    commands:
+      - echo Logging in to Amazon ECR...
+      - aws ecr get-login-password --region ${AWS_DEFAULT_REGION} | docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com
+      - REPOSITORY_URI=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com/test-lfs
+      - COMMIT_HASH=$(echo ${CODEBUILD_RESOLVED_SOURCE_VERSION})
+      - IMAGE_TAG=$CODEBUILD_RESOLVED_SOURCE_VERSION
+      - echo "Image Tag $IMAGE_TAG"
+      - echo Installing Git LFS...
+      - curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | bash
+      - apt-get install -y git-lfs
+      - git lfs install
+      - git lfs pull
+      - echo Checking if LFS files are present...
+      - git lfs pull || (echo "Git LFS Pull Failed" && exit 1)
+      - echo "Git LFS Pull Successful"
+      - git lfs ls-files
+  build:
+    commands:
+      - echo Building app test-LFS...
+      - docker build -t $REPOSITORY_URI:$IMAGE_TAG
+  post_build:
+    commands:
+      - echo Build completed for test-LFS
+      - docker push $REPOSITORY_URI:$IMAGE_TAG
+      - |
+        cat << EOF > imagedefinitions.json
+        [
+          {
+            "name": "${CONTAINER_NAME}",
+            "imageUri": "${REPOSITORY_URI}:${IMAGE_TAG}"
+          }
+        ]
+        EOF
+
+artifacts:
+  files:
+    - imagedefinitions.json
