@@ -21,11 +21,11 @@ phases:
   build:
     commands:
       - echo Building app test-LFS...
-      - docker build -t $REPOSITORY_URI:$IMAGE_TAG
+      - docker build -t $REPOSITORY_URI:$IMAGE_TAG .
   post_build:
     commands:
       - echo Build completed for test-LFS
-      - docker push $REPOSITORY_URI:$IMAGE_TAG .
+      - docker push $REPOSITORY_URI:$IMAGE_TAG
       - |
         cat << EOF > imagedefinitions.json
         [
